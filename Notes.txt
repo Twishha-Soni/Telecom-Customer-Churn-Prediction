@@ -17,3 +17,25 @@
 10. Select 3 candidate models, train each, evaluate on a validation set (not
     test set yet) — this is a first-pass comparison, not final tuning.
 11. Then tune your model using hyperparameter tuning for the model you think that would predict more accurate on the data.
+
+
+
+# Step2:
+-  If you evaluate on data the model was trained on (or worse, if you peek at the test set while engineering features), your performance numbers become optimistic — you're measuring memorization, not generalization.
+
+- why stratified?
+  With a ~73/27 class imbalance, a plain random split can — just by chance — shift that ratio a bit in either the train or test set, especially since 27% minority class isn't huge to begin with.
+
+-  Stratifying on Churn guarantees both splits preserve the same ~73/27 ratio, so any performance differences you observe later are due to the model/features — not an artifact of a lucky or unlucky split.
+
+# step3:
+- you only explore train_set from this point forward, never test_set.
+
+- The reasoning: anything you learn from visualizing data — a correlation you notice, an outlier pattern, an idea for a combined attribute — ends up influencing decisions you make about feature engineering. If those decisions were shaped by patterns you saw in the test set, you've leaked information from the "future" (data you're supposed to be blind to) into your model design.
+
+# step4:
+- the imputer must be fit only on training data, then that same fitted transformation (e.g., "fill missing values with 32.5") gets applied to the test set and to any future data at serving time. If you fit on the full dataset instead, statistics from the test set (or unseen future customers) leak into your training process
+
+- this string→numeric conversion isn't something SimpleImputer does — it's a separate fix that has to happen before imputation, and it will eventually need to live inside your actual pipeline (not just as a manual one-off here), so that raw incoming data at serving time gets the same treatment. 
+
+- TotalCharges's missing values aren't random — every blank corresponds to a customer with tenure == 0 (they haven't been billed yet). Domain knowledge says the correct fill value for those rows isn't "whatever the median happens to be" — it's 0, since a brand-new customer genuinely has $0 in total charges. 
